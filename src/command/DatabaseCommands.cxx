@@ -215,6 +215,7 @@ handle_list(Client &client, unsigned argc, char *argv[])
 	ConstBuffer<const char *> args(argv + 1, argc - 1);
 	const char *tag_name = args.shift();
 	unsigned tagType = locate_parse_type(tag_name);
+	bool fold_case = false;
 
 	if (tagType >= TAG_NUM_OF_ITEM_TYPES &&
 	    tagType != LOCATE_TAG_FILE_TYPE) {
@@ -238,6 +239,11 @@ handle_list(Client &client, unsigned argc, char *argv[])
 		filter = new SongFilter((unsigned)TAG_ARTIST, args.shift());
 	}
 
+	if (args.size >= 1 && strcmp(args[args.size - 1], "fuzzy") == 0) {
+		fold_case = true;
+		args.pop_back();
+	}
+
 	while (args.size >= 2 &&
 	       strcmp(args[args.size - 2], "group") == 0) {
 		const char *s = args[args.size - 1];
@@ -256,7 +262,7 @@ handle_list(Client &client, unsigned argc, char *argv[])
 
 	if (!args.IsEmpty()) {
 		filter = new SongFilter();
-		if (!filter->Parse(args, false)) {
+		if (!filter->Parse(args, fold_case)) {
 			delete filter;
 			command_error(client, ACK_ERROR_ARG,
 				      "not able to parse args");
