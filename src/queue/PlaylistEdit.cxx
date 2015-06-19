@@ -333,6 +333,9 @@ playlist::DeleteSong(PlayerControl &pc, const char *uri)
 PlaylistResult
 playlist::MoveRange(PlayerControl &pc, unsigned start, unsigned end, int to)
 {
+	if (end > queue.GetLength())
+		end = queue.GetLength();
+
 	if (!queue.IsValidPosition(start) || !queue.IsValidPosition(end - 1))
 		return PlaylistResult::BAD_RANGE;
 
