@@ -77,6 +77,8 @@ class CurlInputStream final : public AsyncInputStream, CurlResponseHandler {
 	/** parser for icy-metadata */
 	std::shared_ptr<IcyMetaDataParser> icy;
 
+	bool recv_error_occurred = false;
+
 public:
 	template<typename I>
 	CurlInputStream(EventLoop &event_loop, const char *_url,
@@ -133,7 +135,7 @@ private:
 		       std::multimap<std::string, std::string> &&headers) override;
 	void OnData(ConstBuffer<void> data) override;
 	void OnEnd() override;
-	void OnError(std::exception_ptr e) noexcept override;
+	void OnError(std::exception_ptr e, CURLcode code = CURLE_OK) noexcept override;
 
 	/* virtual methods from AsyncInputStream */
 	virtual void DoResume() override;
@@ -260,6 +262,8 @@ CurlInputStream::OnData(ConstBuffer<void> data)
 
 	const std::lock_guard<Mutex> protect(mutex);
 
+	recv_error_occurred = false;
+
 	if (IsSeekPending())
 		SeekDone();
 
@@ -281,9 +285,21 @@ CurlInputStream::OnEnd()
 }
 
 void
-CurlInputStream::OnError(std::exception_ptr e) noexcept
+CurlInputStream::OnError(std::exception_ptr e, CURLcode code) noexcept
 {
 	const std::lock_guard<Mutex> protect(mutex);
+	if (!recv_error_occurred
+		    && (code == CURLE_PARTIAL_FILE || code == CURLE_RECV_ERROR)) {
+		FormatDefault(curl_domain, "Trying to resume partial file");
+
+		recv_error_occurred = true; // prevent infinite loops, only retry once
+
+		// Seek to the offset + data that's already buffered
+		SeekInternal(GetBufferSize() + GetOffset());
+
+		return;
+	}
+
 	postponed_exception = std::move(e);
 
 	if (IsSeekPending())
