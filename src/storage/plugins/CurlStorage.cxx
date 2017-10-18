@@ -143,7 +143,7 @@ private:
 	}
 
 	/* virtual methods from CurlResponseHandler */
-	void OnError(std::exception_ptr e) final {
+	void OnError(std::exception_ptr e, CURLcode /*code*/) final {
 		const std::lock_guard<Mutex> lock(mutex);
 		postponed_error = std::move(e);
 		SetDone();

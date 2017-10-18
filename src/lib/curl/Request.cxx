@@ -152,11 +152,11 @@ CurlRequest::Done(CURLcode result)
 			const char *msg = error_buffer;
 			if (*msg == 0)
 				msg = curl_easy_strerror(result);
-			throw FormatRuntimeError("CURL failed: %s", msg);
+			throw FormatRuntimeError("CURL failed: %s (%d)", msg, result);
 		}
 	} catch (...) {
 		state = State::CLOSED;
-		handler.OnError(std::current_exception());
+		handler.OnError(std::current_exception(), result);
 		return;
 	}
 
